@@ -1,0 +1,80 @@
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const path = require("path");
+const mercadopago = require("mercadopago");
+const { dbPromise } = require("./db");
+
+// Rotas do projeto
+const clientesRoutes = require("./routes/clientes");
+const vendasRoutes = require("./routes/vendas");
+const produtosRoutes = require("./routes/produtos");
+const carrinhoRoutes = require("./routes/carrinho");
+const promocoesRoutes = require("./routes/promocoes");
+const lojasRoutes = require("./routes/lojas");
+const pixRoutes = require("./routes/pix");
+const checkoutRoutes = require("./routes/checkout");
+
+const app = express();
+const port = 3000;
+
+app.use(cors());
+app.use(bodyParser.json());
+
+// Servir imagens
+app.use("/imagens", express.static(path.join(__dirname, "imagens")));
+
+// Rotas do app
+app.use("/clientes", clientesRoutes);
+app.use("/vendas", vendasRoutes);
+app.use("/produtos", produtosRoutes);
+app.use("/carrinho", carrinhoRoutes);
+app.use("/promocoes", promocoesRoutes);
+app.use("/lojas", lojasRoutes);
+app.use("/checkout", checkoutRoutes);
+app.use("/pix", pixRoutes);
+
+// ✅ Webhook do Mercado Pago (notificações automáticas)
+app.post("/webhook", async (req, res) => {
+  //Atualiza o Id_pagamento no pedido
+  if (req.body?.data?.id) {
+    const paymentId = req.body.data.id;
+    const pagamento = await mercadopago.payment.findById(paymentId);
+    const status = pagamento.body.status;
+    const id = pagamento.body.external_reference;
+    const bandeira = pagamento.body.payment_method_id;
+    const tipo_id = pagamento.body.payment_type_id;
+    const motivo = pagamento.body.status_detail;
+
+    const [rows] = await dbPromise.query(
+      "UPDATE vendas SET id_pagamento = ?, st = ?, tipo_pagamento = ?, bandeira = ? WHERE id_venda = ?",
+      [paymentId, tipo_id, bandeira, status, id]
+    );
+
+    console.log("Pagamento:", {
+      paymentId,
+      status,
+      id,
+      motivo,
+    });
+  }
+  res.sendStatus(200);
+});
+
+// ✅ Rotas de retorno visual para testes via navegador
+app.get("/pagamento/sucesso", (req, res) => {
+  res.send("✅ Pagamento aprovado com sucesso!");
+});
+
+app.get("/pagamento/falha", (req, res) => {
+  res.send("❌ Ocorreu um erro no pagamento.");
+});
+
+app.get("/pagamento/pendente", (req, res) => {
+  res.send("⏳ Seu pagamento está pendente de aprovação.");
+});
+
+// Iniciar servidor
+app.listen(port, "0.0.0.0", () => {
+  console.log(`🚀 Servidor rodando em http://192.168.0.26:${port}`);
+});
