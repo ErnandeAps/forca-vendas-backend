@@ -13,6 +13,22 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET /produtos/busca?nome=ração
+router.get("/busca", async (req, res) => {
+  const nome = req.query.nome;
+
+  try {
+    const [rows] = await dbPromise.query(
+      "SELECT * FROM produtos WHERE nome LIKE ?",
+      [`%${nome}%`]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Erro ao buscar produtos");
+  }
+});
+
 // Buscar produto por ID
 router.get("/id/:id", async (req, res) => {
   const { id } = req.params;
