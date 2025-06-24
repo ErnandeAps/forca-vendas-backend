@@ -97,11 +97,15 @@ router.post("/", async (req, res) => {
     payer: {
       name: cliente.nome || "Cliente App",
     },
-    notification_url: "https://782c-179-156-32-247.ngrok-free.app/webhook",
+    notification_url:
+      "https://forca-vendas-backend-production.up.railway.app/webhook",
     back_urls: {
-      success: "https://782c-179-156-32-247.ngrok-free.app/pagamento/sucesso",
-      failure: "https://782c-179-156-32-247.ngrok-free.app/pagamento/falha",
-      pending: "https://782c-179-156-32-247.ngrok-free.app/pagamento/pendente",
+      success:
+        "https://forca-vendas-backend-production.up.railway.app/pagamento/sucesso",
+      failure:
+        "https://forca-vendas-backend-production.up.railway.app/pagamento/falha",
+      pending:
+        "https://forca-vendas-backend-production.up.railway.app/pagamento/pendente",
     },
     auto_return: "approved",
   };
@@ -144,11 +148,15 @@ router.post("/pagamento/:id_venda", async (req, res) => {
     payer: {
       name: pedido.nome || "Cliente App",
     },
-    notification_url: "https://782c-179-156-32-247.ngrok-free.app/webhook",
+    notification_url:
+      "https://forca-vendas-backend-production.up.railway.app/webhook",
     back_urls: {
-      success: "https://782c-179-156-32-247.ngrok-free.app/pagamento/sucesso",
-      failure: "https://782c-179-156-32-247.ngrok-free.app/pagamento/falha",
-      pending: "https://782c-179-156-32-247.ngrok-free.app/pagamento/pendente",
+      success:
+        "https://forca-vendas-backend-production.up.railway.app/pagamento/sucesso",
+      failure:
+        "https://forca-vendas-backend-production.up.railway.app/pagamento/falha",
+      pending:
+        "https://forca-vendas-backend-production.up.railway.app/pagamento/pendente",
     },
     auto_return: "approved",
   };
