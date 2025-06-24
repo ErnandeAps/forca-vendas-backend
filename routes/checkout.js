@@ -98,7 +98,7 @@ router.post("/", async (req, res) => {
       name: cliente.nome || "Cliente App",
     },
     notification_url:
-      "https://forca-vendas-backend-production.up.railway.app/webhook",
+      "https://forca-vendas-backend-production.up.railway.app/webhooks",
     back_urls: {
       success:
         "https://forca-vendas-backend-production.up.railway.app/pagamento/sucesso",
