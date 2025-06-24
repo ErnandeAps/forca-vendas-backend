@@ -149,7 +149,7 @@ router.post("/pagamento/:id_venda", async (req, res) => {
       name: pedido.nome || "Cliente App",
     },
     notification_url:
-      "https://forca-vendas-backend-production.up.railway.app/webhook",
+      "https://forca-vendas-backend-production.up.railway.app/webhooks",
     back_urls: {
       success:
         "https://forca-vendas-backend-production.up.railway.app/pagamento/sucesso",
@@ -203,7 +203,7 @@ router.get("/pagamento/:id", (req, res) => {
 });
 
 // ✅ Webhook do Mercado Pago
-router.post("/webhook", (req, res) => {
+router.post("/webhooks", (req, res) => {
   res.sendStatus(200);
 });
 
