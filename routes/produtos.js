@@ -19,7 +19,7 @@ router.get("/busca", async (req, res) => {
 
   try {
     const [rows] = await dbPromise.query(
-      "SELECT * FROM produtos WHERE nome LIKE ?",
+      "SELECT * FROM produtos WHERE produto LIKE ?",
       [`%${nome}%`]
     );
     res.json(rows);
