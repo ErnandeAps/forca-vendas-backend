@@ -1,10 +1,22 @@
 const mysql = require("mysql2");
 
-// 🔹 Cria um pool de conexões
+/*
+// 🔹 Conexão local
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "(#suporte#)",
+  database: "vendasdb",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+*/
+const pool = mysql.createPool({
+  host: "caboose.proxy.rlwy.net",
+  user: "root",
+  port: 18833, // ← CORRETO (com p minúsculo)
+  password: "pzmFuGklAQqcuVSvhmcgdQVbvtGKIwsJ",
   database: "vendasdb",
   waitForConnections: true,
   connectionLimit: 10,
