@@ -46,17 +46,17 @@ app.post("/webhook", async (req, res) => {
     const tipo_id = pagamento.body.payment_type_id;
     const motivo = pagamento.body.status_detail;
 
-    const [rows] = await dbPromise.query(
-      "UPDATE vendas SET id_pagamento = ?, st = ?, tipo_pagamento = ?, bandeira = ? WHERE id_venda = ?",
-      [paymentId, tipo_id, bandeira, status, id]
-    );
-
     console.log("Pagamento:", {
       paymentId,
       status,
       id,
       motivo,
     });
+
+    const [rows] = await dbPromise.query(
+      "UPDATE vendas SET id_pagamento = ?, tipo_pagamento = ?, bandeira = ?, status = ?, st_pagamento = ? WHERE id_venda = ?",
+      [paymentId, tipo_id, bandeira, status, "Pago", id]
+    );
   }
   res.sendStatus(200);
 });

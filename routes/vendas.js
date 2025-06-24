@@ -13,20 +13,53 @@ router.get("/", async (req, res) => {
 });
 
 // 🔸 Buscar uma venda por ID
-router.get("/vendas/:id", async (req, res) => {
+
+router.get("/:device_id", async (req, res) => {
+  const params = req.params.device_id.trim();
+
   try {
     const [results] = await dbPromise.query(
-      "SELECT * FROM vendas WHERE id = ?",
-      [req.params.id]
+      "SELECT * FROM vendas WHERE device_id = ? AND st_pagamento = 'Pago'",
+      [params]
     );
     if (results.length === 0)
       return res.status(404).json({ msg: "Venda não encontrada" });
-    res.json(results[0]);
+    res.json(results);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
 
+router.get("/pendentes/:device_id", async (req, res) => {
+  const params = req.params.device_id.trim();
+
+  try {
+    const [results] = await dbPromise.query(
+      "SELECT * FROM vendas WHERE device_id = ? AND st_pagamento = 'Pendente'",
+      [params]
+    );
+    if (results.length === 0)
+      return res.status(404).json({ msg: "Venda não encontrada" });
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+router.get("/itens/:id_venda", async (req, res) => {
+  const { id_venda } = req.params;
+  console.log("ID da venda:", id_venda);
+  try {
+    const [itens] = await dbPromise.query(
+      "SELECT * FROM vendasitens WHERE id_venda = ?",
+      [id_venda]
+    );
+    res.json(itens);
+  } catch (err) {
+    console.error("Erro ao buscar itens da venda:", err);
+    res.status(500).send("Erro ao buscar itens");
+  }
+});
 // 🔸 Criar nova venda
 router.post("/", async (req, res) => {
   try {
@@ -105,6 +138,49 @@ router.delete("/:id", async (req, res) => {
     res.json({ msg: "Venda excluída com sucesso" });
   } catch (err) {
     res.status(500).json({ erro: err.message });
+  }
+});
+
+router.post("/recompra/:id_venda", async (req, res) => {
+  const { id_venda } = req.params;
+  console.log("ID da venda:", id_venda);
+  try {
+    const [vendaRows] = await dbPromise.query(
+      "SELECT * FROM vendas WHERE id_venda = ?",
+      [id_venda]
+    );
+
+    if (vendaRows.length === 0) {
+      return res.status(404).json({ msg: "Venda não encontrada" });
+    }
+
+    const venda = vendaRows[0]; // uma única venda
+
+    const [itens] = await dbPromise.query(
+      "SELECT * FROM vendasitens WHERE id_venda = ?",
+      [id_venda]
+    );
+
+    const carrinhoItens = [];
+
+    for (const item of itens) {
+      const itemCarrinho = {
+        device_id: venda.device_id,
+        celular: venda.celular,
+        id_produto: item.id_produto,
+        produto: item.produto,
+        valor: item.valor,
+        qtd: item.qtd,
+        total: (item.valor * item.qtd).toFixed(2),
+      };
+
+      await dbPromise.query("INSERT INTO carrinho SET ?", itemCarrinho);
+      carrinhoItens.push(itemCarrinho);
+    }
+    res.json({ message: "Produto adicionado ao carrinho com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao buscar itens da venda:", err);
+    res.status(500).send("Erro ao buscar itens");
   }
 });
 

@@ -11,81 +11,155 @@ mercadopago.configure({
 
 // ✅ Rota para criar preferência de pagamento
 router.post("/", async (req, res) => {
-  const { telefone, tipoEntrega, itens, clienteNome } = req.body;
+  const device_id = req.body.device_id.trim();
+  const tipo_entrega = req.body.tipo_entrega.trim();
+  const st_pagamento = "Pendente";
 
-  try {
-    const total = itens.reduce((soma, item) => {
-      const preco = parseFloat(item.preco.toString().replace(",", "."));
-      return soma + item.quantidade * preco;
-    }, 0);
+  //Pega os dados do cliente
+  const [Cliente] = await dbPromise.query(
+    "SELECT * FROM clientes WHERE device_id = ?",
+    [device_id]
+  );
 
-    const [itensCarrinho] = await dbPromise.query(
-      "SELECT * FROM carrinho WHERE celular = ?",
-      [telefone]
-    );
-
-    const [vendaResult] = await dbPromise.query(
-      `INSERT INTO vendas (celular, nome, tipo_entrega, total, data)
-       VALUES (?, ?, ?, ?, NOW())`,
-      [telefone, clienteNome, tipoEntrega, total]
-    );
-
-    const idVenda = vendaResult.insertId;
-
-    for (const item of itensCarrinho) {
-      await dbPromise.query(
-        `INSERT INTO vendasitens (id_venda, id_produto, produto, valor, qtd, total)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          idVenda,
-          item.id_produto,
-          item.produto,
-          item.valor,
-          item.qtd,
-          item.total,
-        ]
-      );
-    }
-
-    await dbPromise.query("DELETE FROM carrinho WHERE celular = ?", [telefone]);
-
-    const preference = {
-      external_reference: idVenda.toString(),
-      items: [
-        {
-          title: `Pedido nº ${idVenda} - New Word Pets`,
-          quantity: 1,
-          unit_price: total,
-          currency_id: "BRL",
-        },
-      ],
-      payer: {
-        name: clienteNome || "Cliente App",
-      },
-      notification_url:
-        "https://a127-2804-14d-be81-8d21-e5ab-bfd8-fa82-aaa0.ngrok-free.app/webhook",
-      back_urls: {
-        success:
-          "https://a127-2804-14d-be81-8d21-e5ab-bfd8-fa82-aaa0.ngrok-free.app/pagamento/sucesso",
-        failure:
-          "https://a127-2804-14d-be81-8d21-e5ab-bfd8-fa82-aaa0.ngrok-free.app/pagamento/falha",
-        pending:
-          "https://a127-2804-14d-be81-8d21-e5ab-bfd8-fa82-aaa0.ngrok-free.app/pagamento/pendente",
-      },
-      auto_return: "approved",
-    };
-
-    const result = await mercadopago.preferences.create(preference);
-
-    // 🔁 Retorna init_point e id para usar no Checkout Bricks
-    res.json({
-      init_point: result.body.init_point,
-      idPreferencia: result.body.id,
-    });
-  } catch (error) {
-    console.error("Erro ao criar preferência:", error);
-    res.status(500).json({ error: "Erro ao criar pagamento" });
+  if (!Cliente[0]) {
+    return res.status(404).json({ error: "Cliente não encontrado." });
   }
+
+  const cliente = Cliente[0]; // ← Aqui você define a variável
+
+  //Pega os itens do carrinho
+  const [itensCarrinho] = await dbPromise.query(
+    "SELECT * FROM carrinho WHERE device_id = ?",
+    [device_id]
+  );
+
+  if (!itensCarrinho[0]) {
+    return res.status(404).json({ error: "Itens não encontrado." });
+  }
+  //totaliza os valores do carrinho
+  const [somaTotal] = await dbPromise.query(
+    `SELECT 
+     SUM(qtd) AS totalItens, 
+     SUM(qtd * valor) AS totalValor 
+   FROM carrinho 
+   WHERE device_id = ?`,
+    [device_id]
+  );
+  const totalItens = somaTotal[0].totalItens;
+  const totalValor = somaTotal[0].totalValor;
+
+  const [vendaResult] = await dbPromise.query(
+    `INSERT INTO vendas (device_id, telefone, id_cliente, nome, tipo_entrega, st_pagamento, total, data)
+   VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+    [
+      device_id,
+      cliente.telefone,
+      cliente.id,
+      cliente.nome,
+      tipo_entrega,
+      st_pagamento,
+      somaTotal[0].totalValor,
+    ]
+  );
+
+  const idVenda = vendaResult.insertId;
+
+  for (const item of itensCarrinho) {
+    await dbPromise.query(
+      `INSERT INTO vendasitens (id_venda, device_id, id_produto, produto, valor, qtd, total)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        idVenda,
+        device_id,
+        item.id_produto,
+        item.produto,
+        item.valor,
+        item.qtd,
+        item.total,
+      ]
+    );
+  }
+
+  await dbPromise.query("DELETE FROM carrinho WHERE device_id = ?", [
+    device_id,
+  ]);
+
+  const preference = {
+    external_reference: idVenda.toString(),
+    items: [
+      {
+        title: `Pedido nº ${idVenda} - New Word Pets`,
+        quantity: 1,
+        unit_price: parseFloat(totalValor),
+        currency_id: "BRL",
+      },
+    ],
+    payer: {
+      name: cliente.nome || "Cliente App",
+    },
+    notification_url: "https://782c-179-156-32-247.ngrok-free.app/webhook",
+    back_urls: {
+      success: "https://782c-179-156-32-247.ngrok-free.app/pagamento/sucesso",
+      failure: "https://782c-179-156-32-247.ngrok-free.app/pagamento/falha",
+      pending: "https://782c-179-156-32-247.ngrok-free.app/pagamento/pendente",
+    },
+    auto_return: "approved",
+  };
+
+  const result = await mercadopago.preferences.create(preference);
+
+  // 🔁 Retorna init_point e id para usar no Checkout Bricks
+  res.json({
+    init_point: result.body.init_point,
+    idPreferencia: result.body.id,
+  });
+});
+//**************************************************************************************************** */
+router.post("/pagamento/:id_venda", async (req, res) => {
+  const id_venda = req.params.id_venda;
+
+  // Verifica se o ID da venda foi fornecido
+  const [Pedido] = await dbPromise.query(
+    "SELECT * FROM vendas WHERE id_venda = ?",
+    [id_venda]
+  );
+
+  const pedido = Pedido[0];
+  if (!pedido) {
+    return res.status(404).json({ error: "Pedido não encontrado." });
+  }
+
+  const totalValor = pedido.total;
+
+  const preference = {
+    external_reference: id_venda.toString(),
+    items: [
+      {
+        title: `Pedido nº ${id_venda} - New Word Pets`,
+        quantity: 1,
+        unit_price: parseFloat(totalValor),
+        currency_id: "BRL",
+      },
+    ],
+    payer: {
+      name: pedido.nome || "Cliente App",
+    },
+    notification_url: "https://782c-179-156-32-247.ngrok-free.app/webhook",
+    back_urls: {
+      success: "https://782c-179-156-32-247.ngrok-free.app/pagamento/sucesso",
+      failure: "https://782c-179-156-32-247.ngrok-free.app/pagamento/falha",
+      pending: "https://782c-179-156-32-247.ngrok-free.app/pagamento/pendente",
+    },
+    auto_return: "approved",
+  };
+
+  const result = await mercadopago.preferences.create(preference);
+
+  // 🔁 Retorna init_point e id para usar no Checkout Bricks
+  res.json({
+    init_point: result.body.init_point,
+    idPreferencia: result.body.id,
+  });
 });
 
 // ✅ Rota para exibir o Checkout Bricks via WebView no app
@@ -122,7 +196,6 @@ router.get("/pagamento/:id", (req, res) => {
 
 // ✅ Webhook do Mercado Pago
 router.post("/webhook", (req, res) => {
-  console.log("🔔 Webhook recebido:", req.body);
   res.sendStatus(200);
 });
 

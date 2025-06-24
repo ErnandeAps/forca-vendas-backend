@@ -3,13 +3,15 @@ const router = express.Router();
 const { dbPromise } = require("../db");
 
 // 🔸 Listar todos os itens do carrinho por celular
-router.get("/:celular", async (req, res) => {
+router.get("/:dispositivos/:param", async (req, res) => {
   try {
-    const { celular } = req.params;
+    const { param } = req.params;
+    //console.log("Requisição", { param });
     const [rows] = await dbPromise.query(
-      "SELECT * FROM carrinho WHERE celular = ?",
-      [celular]
+      "SELECT * FROM carrinho WHERE device_id = ?",
+      [param]
     );
+    //console.log("lista produtos", res.json(rows));
     res.json(rows);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -18,12 +20,12 @@ router.get("/:celular", async (req, res) => {
 
 // 🔸 Inserir item no carrinho
 router.post("/", async (req, res) => {
-  const { id_produto, celular, qtd = 1, valor } = req.body;
-  console.log("Requisição:", req.body);
-  if (!id_produto || !celular) {
+  const { id_produto, device_id, qtd = 1, valor } = req.body;
+  //console.log("Requisição:", req.body);
+  if (!id_produto || !device_id) {
     return res
       .status(400)
-      .json({ error: "id_produto e celular são obrigatórios" });
+      .json({ error: "id_produto e device_id são obrigatórios" });
   }
 
   try {
@@ -43,7 +45,7 @@ router.post("/", async (req, res) => {
       valor: valor,
       qtd,
       total: (valor * qtd).toFixed(2),
-      celular,
+      device_id,
     };
 
     const [result] = await dbPromise.query(
