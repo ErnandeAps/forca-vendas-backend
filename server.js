@@ -35,7 +35,7 @@ app.use("/checkout", checkoutRoutes);
 app.use("/pix", pixRoutes);
 
 // ✅ Webhook do Mercado Pago (notificações automáticas)
-app.post("/webhook", async (req, res) => {
+app.post("/webhooks", async (req, res) => {
   //Atualiza o Id_pagamento no pedido
   if (req.body?.data?.id) {
     const paymentId = req.body.data.id;
