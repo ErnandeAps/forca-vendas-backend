@@ -12,6 +12,8 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 */
+//Conexão com o banco
+
 const pool = mysql.createPool({
   host: "caboose.proxy.rlwy.net",
   user: "root",
