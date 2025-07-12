@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 const mercadopago = require("mercadopago");
 const { dbPromise } = require("./db");
 
@@ -24,6 +26,29 @@ app.use(bodyParser.json());
 // Servir imagens
 app.use("/imagens", express.static(path.join(__dirname, "imagens")));
 
+// 📸 Upload de imagem (com Multer)
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const cnpj = req.params.cnpj;
+    const pasta = path.join(__dirname, "imagens", cnpj, "produtos");
+
+    fs.mkdirSync(pasta, { recursive: true }); // Cria diretório se não existir
+    cb(null, pasta);
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname); // Usa o nome original do arquivo
+  },
+});
+
+const upload = multer({ storage: storage });
+
+app.post("/imagens/:cnpj/produtos", upload.single("imagem"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send("Nenhuma imagem enviada.");
+  }
+  res.status(200).send("Imagem enviada com sucesso.");
+});
+
 // Rotas do app
 app.use("/clientes", clientesRoutes);
 app.use("/vendas", vendasRoutes);
@@ -36,7 +61,6 @@ app.use("/pix", pixRoutes);
 
 // ✅ Webhook do Mercado Pago (notificações automáticas)
 app.post("/webhooks", async (req, res) => {
-  //Atualiza o Id_pagamento no pedido
   if (req.body?.data?.id) {
     const paymentId = req.body.data.id;
     const pagamento = await mercadopago.payment.findById(paymentId);
@@ -53,7 +77,7 @@ app.post("/webhooks", async (req, res) => {
       motivo,
     });
 
-    const [rows] = await dbPromise.query(
+    await dbPromise.query(
       "UPDATE vendas SET id_pagamento = ?, tipo_pagamento = ?, bandeira = ?, status = ?, st_pagamento = ? WHERE id_venda = ?",
       [paymentId, tipo_id, bandeira, status, "Pago", id]
     );
@@ -75,11 +99,6 @@ app.get("/pagamento/pendente", (req, res) => {
 });
 
 // Iniciar servidor
-/*
-app.listen(port, "0.0.0.0", () => {
-  console.log(`🚀 Servidor rodando em http://192.168.0.26:${port}`);
-});
-*/
 app.listen(port, () => {
-  console.log(`Servidor rodando na porta ${port}`);
+  console.log(`🚀 Servidor rodando na porta ${port}`);
 });
