@@ -42,7 +42,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.post("/", upload.single("imagem"), (req, res) => {
+app.post("/", upload.single("imagem"), (req, res) => {
   const cnpj = req.body.cnpj;
   const nomeArquivo = req.file.originalname;
   const caminho = path.join("imagens", cnpj, "produtos", nomeArquivo);
