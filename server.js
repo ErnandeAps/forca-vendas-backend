@@ -27,28 +27,47 @@ app.use(bodyParser.json());
 app.use("/imagens", express.static(path.join(__dirname, "imagens")));
 
 // 📸 Upload de imagem (com Multer)
+// Configuração do armazenamento de arquivos do multer
 const storage = multer.diskStorage({
+  // Define a pasta de destino onde o arquivo será salvo
   destination: function (req, file, cb) {
-    const cnpj = req.params.cnpj;
-    const pasta = path.join(__dirname, "imagens", cnpj, "produtos");
+    const cnpj = req.params.cnpj; // Obtém o CNPJ da URL (ex: /imagens/:cnpj/produtos)
+    const pasta = path.join(__dirname, "imagens", cnpj, "produtos"); // Caminho completo da pasta de destino
 
-    fs.mkdirSync(pasta, { recursive: true }); // Cria diretório se não existir
-    cb(null, pasta);
+    fs.mkdirSync(pasta, { recursive: true }); // Cria o diretório, inclusive pais, se ainda não existir
+    cb(null, pasta); // Informa ao multer onde salvar o arquivo
   },
+
+  // Define o nome do arquivo no momento do salvamento
   filename: function (req, file, cb) {
-    cb(null, file.originalname); // Usa o nome original do arquivo
+    const pasta = path.join(__dirname, "imagens", req.params.cnpj, "produtos"); // Caminho da pasta de destino
+    const caminho = path.join(pasta, file.originalname); // Caminho completo do arquivo (caso use o nome original)
+
+    // Verifica se já existe um arquivo com o mesmo nome
+    if (fs.existsSync(caminho)) {
+      const ext = path.extname(file.originalname); // Pega a extensão (.jpg, .png, etc)
+      const base = path.basename(file.originalname, ext); // Pega o nome do arquivo sem a extensão
+      const novoNome = `${base}-${Date.now()}${ext}`; // Cria um novo nome com timestamp para evitar sobrescrever
+      cb(null, novoNome); // Usa o nome alternativo
+    } else {
+      cb(null, file.originalname); // Se não existir, usa o nome original
+    }
   },
 });
 
-const upload = multer({ storage: storage });
+// Cria o middleware multer com a configuração de armazenamento definida
+const upload = multer({ storage });
 
+// Define a rota de upload de imagem
+// A rota espera um CNPJ na URL e um campo "imagem" com o arquivo
 app.post("/imagens/:cnpj/produtos", upload.single("imagem"), (req, res) => {
-  /*
+  // Verifica se algum arquivo foi realmente enviado
   if (!req.file) {
     return res.status(400).send("Nenhuma imagem enviada.");
   }
-    */
-  res.status(200).send("Imagem enviada com sucesso.");
+
+  // Se chegou até aqui, o upload foi bem-sucedido
+  return res.status(200).send("Imagem enviada com sucesso.");
 });
 
 // Rotas do app
