@@ -43,9 +43,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.post("/imagens/:cnpj/produtos", upload.single("imagem"), (req, res) => {
+  /*
   if (!req.file) {
     return res.status(400).send("Nenhuma imagem enviada.");
   }
+    */
   res.status(200).send("Imagem enviada com sucesso.");
 });
 
