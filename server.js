@@ -25,7 +25,37 @@ app.use(bodyParser.json());
 
 // Servir imagens
 app.use("/imagens", express.static(path.join(__dirname, "imagens")));
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const cnpj = req.body.cnpj;
+    const dir = path.join("imagens", cnpj, "produtos");
 
+    // Cria o diretório se não existir
+    fs.mkdirSync(dir, { recursive: true });
+
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.originalname); // mantém o nome original do arquivo
+  },
+});
+
+const upload = multer({ storage });
+
+router.post("/", upload.single("imagem"), (req, res) => {
+  const cnpj = req.body.cnpj;
+  const nomeArquivo = req.file.originalname;
+  const caminho = path.join("imagens", cnpj, "produtos", nomeArquivo);
+
+  // Se o arquivo já existia antes do upload, o multer já substituiu
+  const existiaAntes = fs.existsSync(caminho);
+
+  return res.json({
+    status: existiaAntes ? "atualizado" : "salvo",
+    caminho,
+  });
+});
+/*
 // 📸 Upload de imagem (com Multer)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -46,10 +76,9 @@ app.post("/imagens/:cnpj/produtos", upload.single("imagem"), (req, res) => {
   if (!req.file) {
     return res.status(400).send("Nenhuma imagem enviada.");
   }
-
   res.status(200).send("Imagem enviada com sucesso.");
 });
-
+*/
 // Rotas do app
 app.use("/clientes", clientesRoutes);
 app.use("/vendas", vendasRoutes);
